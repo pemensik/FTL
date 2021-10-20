@@ -1,13 +1,14 @@
 #!/bin/bash
 
 MYDIR="$(dirname -- "$0")"
+: ${DNSMASQ:=dnsmasq}
 
 run_server() {
 	local CONF="$1"
 	local PIDF="$2"
 
 	[ -r $PIDF ] && pkill -F $PIDF
-	dnsmasq --conf-file="$CONF" --pid-file=$PIDF
+	"$DNSMASQ" --conf-file="$CONF" --pid-file=$PIDF
 }
 
 echo "********* Starting dnsmasq **********"
