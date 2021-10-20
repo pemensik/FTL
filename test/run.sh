@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VARIANT="${1:-pdns}"
+
 # Only run tests on x86_64, x86_64-musl, and x86_32 targets
 if [[ ${CI} == "true" && "${CIRCLE_JOB}" != "x86_64" &&  "${CIRCLE_JOB}" != "x86_64-musl" && "${CIRCLE_JOB}" != "x86_32" ]]; then
   echo "Skipping tests (CIRCLE_JOB: ${CIRCLE_JOB})!"
@@ -54,7 +56,7 @@ cp test/pihole-FTL.conf /etc/pihole/pihole-FTL.conf
 cp test/dnsmasq.conf /etc/dnsmasq.conf
 
 # Prepare local powerDNS resolver
-bash test/pdns/setup.sh
+bash test/$VARIANT/setup.sh
 
 # Set restrictive umask
 OLDUMASK=$(umask)
