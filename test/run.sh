@@ -1,6 +1,7 @@
 #!/bin/bash
 
 VARIANT="${1:-pdns}"
+: ${TRICORDER:=https://tricorder.pi-hole.net}
 
 # Only run tests on x86_64, x86_64-musl, and x86_32 targets
 if [[ ${CI} == "true" && "${CIRCLE_JOB}" != "x86_64" &&  "${CIRCLE_JOB}" != "x86_64-musl" && "${CIRCLE_JOB}" != "x86_32" ]]; then
@@ -95,10 +96,10 @@ $BATS "test/test_suite.bats"
 RET=$?
 
 curl_to_tricorder() {
-  curl --silent --upload-file "${1}" https://tricorder.pi-hole.net
+  curl --silent --upload-file "${1}" ${TRICORDER}
 }
 
-if [[ $RET != 0 ]]; then
+if [[ $RET != 0 ]] && [ "${TRICORDER}" != '.' ]; then
   echo -n "pihole.log: "
   curl_to_tricorder /var/log/pihole.log
   echo ""
