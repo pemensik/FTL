@@ -12,13 +12,16 @@
 # to build. It is placed in its own target so that it does not include any other
 # headers in the build command and thus does not need to be rebuilt when headers
 # are modified.
-set(sqlite3_sources
+
+if (NOT (PREFER_EXTERNAL AND PkgConfig_FOUND AND SQLITE_FOUND))
+    set(sqlite3_sources
         shell.c
         sqlite3.c
         )
 
-add_library(sqlite3 OBJECT ${sqlite3_sources})
-target_compile_options(sqlite3 PRIVATE -Wno-implicit-fallthrough -Wno-cast-function-type)
+    add_library(sqlite3 OBJECT ${sqlite3_sources})
+    target_compile_options(sqlite3 PRIVATE -Wno-implicit-fallthrough -Wno-cast-function-type)
+endif()
 
 set(database_sources
         common.c

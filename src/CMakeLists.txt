@@ -91,6 +91,9 @@ if(STATIC STREQUAL "true")
     SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     SET(BUILD_SHARED_LIBS OFF)
 endif()
+
+set(PREFER_EXTERNAL OFF CACHE BOOL "Preferrence to use external libraries instead of bundled code")
+
 # -pie -fPIE: (Dynamic) position independent executable
 set(HARDENING_FLAGS "${HARDENING_FLAGS} -pie -fPIE")
 
@@ -167,15 +170,38 @@ target_compile_definitions(FTL PRIVATE DNSMASQ_VERSION=\"${DNSMASQ_VERSION}\")
 target_include_directories(FTL PRIVATE ${PROJECT_SOURCE_DIR}/src)
 add_dependencies(FTL gen_version)
 
+set(TARGET_SQLITE $<TARGET_OBJECTS:sqlite3>)
+set(TARGET_LUA $<TARGET_OBJECTS:lua>)
+set(TARGET_TRE $<TARGET_OBJECTS:tre-regex>)
+
+find_package(PkgConfig QUIET)
+if (PkgConfig_FOUND AND PREFER_EXTERNAL)
+    pkg_check_modules(LUA lua IMPORTED_TARGET)
+    pkg_check_modules(SQLITE sqlite3 IMPORTED_TARGET)
+    pkg_check_modules(TRE tre IMPORTED_TARGET)
+    if (LUA_FOUND)
+        message(STATUS "Using system lua")
+        set(TARGET_LUA )
+    endif()
+    if (SQLITE_FOUND)
+        message(STATUS "Using system sqlite3")
+        set(TARGET_SQLITE )
+    endif()
+    if (TRE_FOUND)
+        message(STATUS "Using system tre regex")
+        set(TARGET_TRE )
+    endif()
+endif()
+
 
 add_executable(pihole-FTL
         $<TARGET_OBJECTS:FTL>
         $<TARGET_OBJECTS:api>
         $<TARGET_OBJECTS:database>
         $<TARGET_OBJECTS:dnsmasq>
-        $<TARGET_OBJECTS:sqlite3>
-        $<TARGET_OBJECTS:lua>
-        $<TARGET_OBJECTS:tre-regex>
+	${TARGET_SQLITE}
+	${TARGET_LUA}
+	${TARGET_TRE}
         $<TARGET_OBJECTS:syscalls>
         )
 if(STATIC STREQUAL "true")
@@ -197,6 +223,23 @@ find_library(LIBNETTLE NAMES libnettle${CMAKE_STATIC_LIBRARY_SUFFIX} nettle)
 find_library(LIBIDN NAMES libidn${CMAKE_STATIC_LIBRARY_SUFFIX} idn)
 
 target_link_libraries(pihole-FTL rt Threads::Threads ${LIBHOGWEED} ${LIBGMP} ${LIBNETTLE} ${LIBIDN})
+
+if (PkgConfig_FOUND AND PREFER_EXTERNAL)
+    if (LUA_FOUND)
+	target_link_libraries(pihole-FTL PkgConfig::LUA)
+	find_program(LUA_BIN lua)
+	find_program(LUAC_BIN luac)
+	target_compile_definitions(FTL PRIVATE EXTERNAL_LUA=\"${LUA_BIN}\" EXTERNAL_LUAC=\"${LUAC_BIN}\")
+    endif()
+    if (SQLITE_FOUND)
+	target_link_libraries(pihole-FTL PkgConfig::SQLITE)
+	find_program(SQLITE3_BIN sqlite3)
+	target_compile_definitions(FTL PRIVATE EXTERNAL_SQLITE3=\"${SQLITE3_BIN}\")
+    endif()
+    if (TRE_FOUND)
+	target_link_libraries(pihole-FTL PkgConfig::TRE)
+    endif()
+endif()
 
 if(LUA_DL STREQUAL "true")
     find_library(LIBDL dl)
@@ -228,6 +271,10 @@ install(CODE "execute_process(COMMAND ${SETCAP} CAP_NET_BIND_SERVICE,CAP_NET_RAW
 add_subdirectory(api)
 add_subdirectory(database)
 add_subdirectory(dnsmasq)
-add_subdirectory(lua)
-add_subdirectory(tre-regex)
+if (NOT (PREFER_EXTERNAL AND PkgConfig_FOUND AND LUA_FOUND))
+    add_subdirectory(lua)
+endif()
+if (NOT (PREFER_EXTERNAL AND PkgConfig_FOUND AND TRE_FOUND))
+    add_subdirectory(tre-regex)
+endif()
 add_subdirectory(syscalls)

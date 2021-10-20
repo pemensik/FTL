@@ -34,6 +34,51 @@ extern void print_dnsmasq_version(void);
 // defined in database/shell.c
 extern int sqlite3_shell_main(int argc, char **argv);
 
+#ifdef EXTERNAL_SQLITE3
+int sqlite3_shell_main(int argc, char **argv)
+{
+	if (execv(EXTERNAL_SQLITE3, argv) == -1) {
+		perror("execv");
+		return 1;
+	}
+	(void)argc;
+	return 0; /* Never returns */
+}
+#endif
+
+#ifdef EXTERNAL_LUAC
+int run_luac(int argc, char **argv)
+{
+	(void)argc;
+	if (execv(EXTERNAL_LUAC, argv) == -1) {
+		perror("execv");
+		return 1;
+	}
+	(void)argc;
+	return 0; /* Never returns */
+}
+
+int luac_main(int argc, char **argv)
+{
+	return run_luac(argc, argv);
+}
+
+#endif
+
+#ifdef EXTERNAL_LUA
+int run_lua_interpreter(const int argc, char **argv, bool debug)
+{
+	(void)argc;
+	if (execv(EXTERNAL_LUA, argv) == -1) {
+		perror("execv");
+		return 1;
+	}
+	(void)argc; (void)debug;
+	return 0; /* Never returns */
+}
+
+#endif
+
 bool dnsmasq_debug = false;
 bool daemonmode = true, cli_mode = false;
 int argc_dnsmasq = 0;
