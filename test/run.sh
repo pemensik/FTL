@@ -57,7 +57,7 @@ cp test/pihole-FTL.conf /etc/pihole/pihole-FTL.conf
 cp test/dnsmasq.conf /etc/dnsmasq.conf
 
 # Prepare local powerDNS resolver
-bash test/$VARIANT/setup.sh
+bash test/$VARIANT/setup.sh || exit 1
 
 # Set restrictive umask
 OLDUMASK=$(umask)
