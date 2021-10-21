@@ -1,0 +1,51 @@
+ARG PIHOLE_BASE
+FROM "${PIHOLE_BASE:-fedora:latest}"
+
+ARG FTL_REPO
+ENV FTL_REPO "https://github.com/pemensik/FTL.git"
+ARG FTL_BRANCH
+ENV FTL_BRANCH "tests"
+ARG BATS
+ENV BATS "/usr/bin/bats"
+ARG TEST_VARIANT
+
+#COPY install.sh /usr/local/bin/install.sh
+#ENV PIHOLE_INSTALL /etc/.pihole/automated\ install/basic-install.sh
+
+RUN dnf install -y git-core
+# Build requirements
+RUN dnf install -y cmake nettle-devel readline-devel lua-devel libidn-devel gcc
+
+RUN test -d /opt/FTL || \
+    git clone --depth 1 -b ${FTL_BRANCH} ${FTL_REPO} /opt/FTL
+
+RUN cd /opt/FTL && ./build.sh
+
+# Test requirements
+RUN dnf install -y sqlite pdns pdns-recursor bind-utils nc bats procps wget file
+# PDNS backend will require docs. Enable installing including docs
+RUN sed -e 's/^tsflags=nodocs/# &/' -i /etc/dnf/dnf.conf
+RUN dnf install -y pdns-backend-sqlite
+# Just for runtime analysis
+RUN dnf install -y iproute dnsmasq
+
+# Clear package caches
+RUN dnf clean all
+
+#RUN bash -ex install.sh 2>&1 && \
+COPY runtest.sh /usr/local/sbin/runtest.sh
+
+# IPv6 disable flag for networks/devices that do not support it
+ENV IPv6 True
+
+ENV ServerIP 0.0.0.0
+ENV FTL_CMD no-daemon
+ENV DNSMASQ_USER root
+ENV TRICORDER .
+
+ENV PATH /opt/pihole:${PATH}
+
+ENTRYPOINT [ "/usr/local/sbin/runtest.sh" ]
+#ENTRYPOINT [ "/bin/bash" ]
+
+SHELL ["/bin/bash", "-c"]
